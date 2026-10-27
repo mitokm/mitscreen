@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments & local wheels
+.venv/
+venv/
+.wheels/
+
+# Mitscreen runtime data (portable mode)
+data/
+*.log
+
+# OS / editors
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
