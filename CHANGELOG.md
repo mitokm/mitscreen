@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow 
 
 ## [Unreleased]
 
+### Fixed
+- Editor keyboard shortcuts promised in the toolbar labels were never wired
+  up and did nothing: **Ctrl+S** (save), **Ctrl+Z** (undo), **Ctrl+Y** /
+  Ctrl+Shift+Z (redo), **Ctrl+C** (copy) and **Ctrl+P** (print) now work.
+  While a text annotation is being typed they act on the text field instead
+  of the canvas, and **Esc** now closes the editor when the canvas is idle
+  (it still cancels an in-progress text edit or drag first).
+
 ### Changed
 - Quick Bar button order: **Record now comes before Capture**.
 - The workspace / library panel now **docks to the bottom-right corner** of

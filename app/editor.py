@@ -641,17 +641,23 @@ class EditorWindow(QMainWindow):
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, top)
 
         self.act_undo = QAction(icons.icon("undo"), "Hoàn tác (Ctrl+Z)", self)
-        self.act_undo.triggered.connect(self.canvas.undo)
+        self.act_undo.setShortcut(QKeySequence.StandardKey.Undo)
+        self.act_undo.triggered.connect(self._undo)
         self.act_redo = QAction(icons.icon("redo"), "Làm lại (Ctrl+Y)", self)
-        self.act_redo.triggered.connect(self.canvas.redo)
+        self.act_redo.setShortcuts([QKeySequence("Ctrl+Y"),
+                                    QKeySequence("Ctrl+Shift+Z")])
+        self.act_redo.triggered.connect(self._redo)
         self.act_copy = QAction(icons.icon("copy"), "Copy (Ctrl+C)", self)
-        self.act_copy.triggered.connect(self.copy_to_clipboard)
+        self.act_copy.setShortcut(QKeySequence.StandardKey.Copy)
+        self.act_copy.triggered.connect(self._copy)
         self.act_save = QAction(icons.icon("save"), "Lưu (Ctrl+S)", self)
+        self.act_save.setShortcut(QKeySequence.StandardKey.Save)
         self.act_save.triggered.connect(lambda: self.save())
         self.act_save_as = QAction("Lưu thành…", self)
         self.act_save_as.setShortcut(QKeySequence("Ctrl+Shift+S"))
         self.act_save_as.triggered.connect(lambda: self.save(save_as=True))
         self.act_print = QAction(icons.icon("print"), "In (Ctrl+P)", self)
+        self.act_print.setShortcut(QKeySequence.StandardKey.Print)
         self.act_print.triggered.connect(self.print_image)
         self.act_rename = QAction(icons.icon("text"), "Đổi tên tệp (F2)", self)
         self.act_rename.setShortcut(QKeySequence("F2"))
@@ -938,6 +944,46 @@ class EditorWindow(QMainWindow):
         self.saved.emit(path)
         self.statusBar().showMessage(f"Đã lưu: {path}", 4000)
         return path
+
+    # ------------------------------------------------------- shortcut glue
+    def _text_focus(self) -> QLineEdit | None:
+        """The canvas text-edit field, when it currently has keyboard focus.
+
+        While the user is typing a text annotation, Ctrl+Z / Ctrl+Y / Ctrl+C
+        must act on the text being typed, not on the canvas as a whole.
+        """
+        fw = QApplication.focusWidget()
+        return fw if isinstance(fw, QLineEdit) else None
+
+    def _undo(self) -> None:
+        fw = self._text_focus()
+        if fw is not None:
+            fw.undo()
+        else:
+            self.canvas.undo()
+
+    def _redo(self) -> None:
+        fw = self._text_focus()
+        if fw is not None:
+            fw.redo()
+        else:
+            self.canvas.redo()
+
+    def _copy(self) -> None:
+        fw = self._text_focus()
+        if fw is not None:
+            fw.copy()
+        else:
+            self.copy_to_clipboard()
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        # Esc only propagates up to the window when the canvas is idle (the
+        # canvas consumes Esc itself while a text edit or drag is in
+        # progress), so here it can safely close the editor.
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+            return
+        super().keyPressEvent(event)
 
     def copy_to_clipboard(self) -> None:
         image = self.canvas.image()
