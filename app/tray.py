@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QRect, QTimer
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QCursor, QGuiApplication
 from PySide6.QtWidgets import (QApplication, QDialog, QInputDialog, QMenu, QMessageBox,
                                QSystemTrayIcon, QWidget)
 
@@ -456,9 +456,26 @@ class MitscreenApp(QObject):
             self._workspace = workspace
         self._workspace.refresh()
         self._workspace.show()
+        self._dock_workspace()
         self._workspace.raise_()
         self._workspace.activateWindow()
         log("workspace opened")
+
+    def _dock_workspace(self) -> None:
+        """Anchor the workspace panel to the bottom-right corner of the screen
+        the cursor is on (just above the taskbar), like a tray popup."""
+        ws = self._workspace
+        if ws is None:
+            return
+        screen = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
+        if screen is None:
+            return
+        avail = screen.availableGeometry()
+        margin = 12
+        frame = ws.frameGeometry()
+        x = avail.right() - margin - frame.width() + 1
+        y = avail.bottom() - margin - frame.height() + 1
+        ws.move(max(avail.left(), x), max(avail.top(), y))
     def _on_workspace_capture(self, kind: str) -> None:
         if kind == "record":
             self.toggle_recording()

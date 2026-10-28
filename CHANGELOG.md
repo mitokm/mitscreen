@@ -6,6 +6,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow 
 ## [Unreleased]
 
 ### Changed
+- Quick Bar button order: **Record now comes before Capture**.
+- The workspace / library panel now **docks to the bottom-right corner** of
+  the active screen (above the taskbar) whenever it opens, like a tray popup.
 - Captures are now **auto-saved the moment they are taken**: when the editor
   opens after a capture it is bound to the file that was just written, and
   Ctrl+S overwrites that same file — no Save-As step, and closing the editor

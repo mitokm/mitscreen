@@ -96,8 +96,8 @@ class QuickBar(QWidget):
 
         self.btn_region = self._big_button("region", "Chụp vùng", "region")
         self.btn_record = self._big_button("record", "Quay video", "record", color="#ef4444")
-        layout.addWidget(self.btn_region)
         layout.addWidget(self.btn_record)
+        layout.addWidget(self.btn_region)
 
         line = QFrame()
         line.setFrameShape(QFrame.Shape.VLine)
