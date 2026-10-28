@@ -62,8 +62,8 @@ def main() -> int:
     bar._apply_geometry(False, animate=False)
     app.processEvents()
     collapsed = bar.geometry()
-    check("collapsed is a sliver", collapsed.height() <= 18 and collapsed.width() < expanded.width(),
-          str(collapsed))
+    check("collapsed is the hanging spider", collapsed.width() == 72 and collapsed.height() == 78
+          and collapsed.width() < expanded.width(), str(collapsed))
     check("collapsed keeps centre", abs(collapsed.center().x() - expanded.center().x()) <= 2,
           f"{collapsed.center().x()} vs {expanded.center().x()}")
 

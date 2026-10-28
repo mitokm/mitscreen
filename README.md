@@ -46,7 +46,7 @@
 
 ![Region overlay with magnifier and coordinates](docs/screenshots/overlay.png)
 
-### Quick Bar — a floating dock that folds into a sliver
+### Quick Bar — a floating dock that folds into a hanging spider
 
 ![Quick Bar: expanded, menu, collapsed](docs/quickbar-sequence.png)
 
@@ -54,7 +54,7 @@
   <tr>
     <td align="center"><img src="docs/screenshots/quickbar.png" alt="Quick Bar expanded"><br><sub><b>Expanded</b> — capture, record, folder, menu, close</sub></td>
     <td align="center"><img src="docs/screenshots/quickbar-menu.png" alt="Quick Bar function menu"><br><sub><b>Function menu</b> — recapture last region, timer, colour picker, workspace…</sub></td>
-    <td align="center"><img src="docs/screenshots/quickbar-collapsed.png" alt="Quick Bar collapsed into a sliver"><br><sub><b>Collapsed</b> — a thin sliver that stays out of your way</sub></td>
+    <td align="center"><img src="docs/screenshots/quickbar-collapsed.png" alt="Quick Bar collapsed into a hanging spider figure"><br><sub><b>Collapsed</b> — a small black spider figure hanging from its web line (72 × 78 px)</sub></td>
   </tr>
 </table>
 
@@ -102,7 +102,7 @@
 | **Magnifier** | While selecting: a magnifier at the cursor, absolute coordinates and the hex colour under the pointer |
 | **Colour picker** | Click anywhere on screen to copy that pixel’s hex code to the clipboard |
 | **After capture** | Default: **copy to clipboard + open the editor** — no intermediate menu. Switchable to *editor only*, *save immediately*, or the classic *action bar (Edit / Copy / Save / Record / Cancel)* |
-| **Quick Bar** | Floating bar (top-centre by default): region capture, record, open save folder, function menu, hide. Draggable, remembers its position, folds into a thin sliver when idle, hides itself while you capture or record |
+| **Quick Bar** | Floating bar (top-centre by default): region capture, record, open save folder, function menu, hide. Draggable, remembers its position, folds into a small hanging spider figure when idle, hides itself while you capture or record |
 | **Editor** | Crop, **cutout & stitch**, arrow, line, rectangle, ellipse, pen, highlighter, text, blur, mosaic / pixelate, step-number badges |
 | **Editing** | 24-step undo/redo, zoom (`Ctrl` + wheel), pan (`Space` + drag), `Shift` constrains to square / 45° |
 | **Effects** | Pretty frame (padding + rounded corners + drop shadow), text watermark (colour + opacity), resize by % on save |
@@ -198,7 +198,7 @@ whole operation is **one undo step**.
 A small floating dock, anchored to the **top-centre of the primary screen** by default.
 
 - **Hover** → it expands: *Capture region · Record · save folder · function menu · ✕*.
-- **Leave it for ~1 s** → it folds back into a thin sliver with a grip in the middle.
+- **Leave it for ~1 s** → it folds back into a 72 × 78 px figure: a black stick-figure spider hanging upside down from its web line, both hands gripping the line. Hover over the spider and the bar expands again.
 - **Drag** it by any empty area to move it; the position is remembered.
 - It **hides itself while capturing or recording**, so it never lands in your image or
   video, and comes back immediately afterwards.

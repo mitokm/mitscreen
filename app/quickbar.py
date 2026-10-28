@@ -1,13 +1,13 @@
 """A floating quick-access bar: screenshot / record, with more actions behind a menu.
 
 Behaves like a small dock: it sits against the top edge, stays expanded while the
-mouse is over it, and folds into a thin sliver when idle (optional).  It can be
-dragged anywhere on screen and remembers its position.
+mouse is over it, and folds into a small hanging spider figure when idle
+(optional).  It can be dragged anywhere on screen and remembers its position.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import (QEasingCurve, QPoint, QPropertyAnimation, QRect, QRectF,
+from PySide6.QtCore import (QEasingCurve, QPoint, QPointF, QPropertyAnimation, QRect, QRectF,
                             QSize, Qt, QTimer, Signal)
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLayout, QMenu, QToolButton, QWidget)
@@ -59,7 +59,7 @@ class QuickBar(QWidget):
 
         self._build()
         self._expanded_size = self._measure()
-        self._collapsed_size = QSize(164, self.NOTCH + 9)
+        self._collapsed_size = QSize(72, 78)
 
         screen = QGuiApplication.primaryScreen()
         area = screen.availableGeometry() if screen else QRect(0, 0, 1920, 1080)
@@ -178,6 +178,9 @@ class QuickBar(QWidget):
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        if not self._expanded:
+            self._paint_hanging_spider(painter)
+            return
         body = QRectF(0.5, self.NOTCH + 0.5, self.width() - 1, self.height() - self.NOTCH - 1)
         path = QPainterPath()
         path.addRoundedRect(body, self.RADIUS, self.RADIUS)
@@ -186,23 +189,95 @@ class QuickBar(QWidget):
         painter.drawPath(path)
 
         # small tab pointing at the screen edge
-        if self._expanded:
-            cx = self.width() / 2
-            tab = QPainterPath()
-            tab.moveTo(cx - 8, self.NOTCH + 1)
-            tab.lineTo(cx, 0.5)
-            tab.lineTo(cx + 8, self.NOTCH + 1)
-            tab.closeSubpath()
-            painter.fillPath(tab, BODY)
-            painter.setPen(QPen(BORDER, 1))
-            painter.drawLine(QPoint(int(cx - 8), self.NOTCH), QPoint(int(cx - 1), 1))
-            painter.drawLine(QPoint(int(cx + 1), 1), QPoint(int(cx + 8), self.NOTCH))
-        else:
-            # grip so the collapsed sliver stays discoverable
-            grip = QRectF(self.width() / 2 - 22, self.height() - 5.5, 44, 3)
+        cx = self.width() / 2
+        tab = QPainterPath()
+        tab.moveTo(cx - 8, self.NOTCH + 1)
+        tab.lineTo(cx, 0.5)
+        tab.lineTo(cx + 8, self.NOTCH + 1)
+        tab.closeSubpath()
+        painter.fillPath(tab, BODY)
+        painter.setPen(QPen(BORDER, 1))
+        painter.drawLine(QPoint(int(cx - 8), self.NOTCH), QPoint(int(cx - 1), 1))
+        painter.drawLine(QPoint(int(cx + 1), 1), QPoint(int(cx + 8), self.NOTCH))
+
+    def _paint_hanging_spider(self, painter: QPainter) -> None:
+        """Collapsed state: a black stick-figure spider hanging upside down.
+
+        Drawn in a 44x78 design space scaled to the widget: a web line drops
+        from the top edge, the folded legs form a sitting bend at the top, both
+        hands grip the line in front of the chest, and the masked head with
+        white eyes hangs at the bottom.  Every stroke is painted twice — a
+        slightly wider pale pass under the black one — so the figure stays
+        readable on light and dark desktops alike.
+        """
+        u = min(self.width() / 44.0, self.height() / 78.0)
+        cx = self.width() / 2.0
+
+        def pt(x: float, y: float) -> QPointF:
+            return QPointF(cx + x * u, y * u)
+
+        web = QColor(235, 240, 248)
+        ink = QColor(13, 14, 17)
+        halo = QColor(190, 200, 214)
+
+        # the web line, from the widget's top edge down to the hands
+        pen = QPen(web, max(1.0, 1.5 * u))
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        painter.drawLine(pt(0, 0), pt(0, 41))
+        painter.setBrush(web)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(pt(0, 10.5), 2.0 * u, 2.0 * u)  # ankle knot
+
+        segments: list[tuple[QPointF, QPointF]] = []
+        for s in (-1.0, 1.0):
+            segments += [
+                (pt(s * 1.5, 11), pt(s * 12, 22)),   # shin: ankle -> knee
+                (pt(s * 12, 22), pt(s * 3.2, 29)),   # thigh: knee -> hip
+                (pt(0, 43), pt(s * 15, 36)),         # upper arm: shoulder -> elbow
+                (pt(s * 15, 36), pt(s * 1.6, 41)),   # forearm: elbow -> hand on the line
+            ]
+        segments.append((pt(0, 29), pt(0, 45)))      # torso
+
+        joints = [pt(12, 22), pt(-12, 22), pt(15, 36), pt(-15, 36)]
+        hands = [pt(1.6, 41), pt(-1.6, 41)]
+        lw = 3.4 * u
+        rim = 0.7 * u
+        for color, width in ((halo, lw + 2 * rim), (ink, lw)):
+            pen = QPen(color, width)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            for a, b in segments:
+                painter.drawLine(a, b)
+            painter.setBrush(color)
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor(198, 208, 222, 170))
-            painter.drawRoundedRect(grip, 1.5, 1.5)
+            for joint in joints:
+                painter.drawEllipse(joint, width / 2, width / 2)
+            for hand in hands:  # fists wrapped around the line
+                painter.drawEllipse(hand, width * 0.62, width * 0.62)
+
+        # the strand shows between the fists, so the grip reads
+        pen = QPen(web, max(1.0, 1.1 * u))
+        painter.setPen(pen)
+        painter.drawLine(pt(0, 39.4), pt(0, 42.6))
+
+        # head: black mask with a pale rim and big white eyes
+        head = pt(0, 58)
+        r = 9.5 * u
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(halo)
+        painter.drawEllipse(head, r + rim, r + rim)
+        painter.setBrush(ink)
+        painter.drawEllipse(head, r, r)
+        painter.setBrush(QColor(255, 255, 255))
+        for s in (-1.0, 1.0):
+            painter.save()
+            painter.translate(pt(s * 4.4, 57))
+            painter.rotate(16 * s)
+            painter.drawEllipse(QPointF(0, 0), 3.4 * u, 5.4 * u)
+            painter.restore()
 
     # --------------------------------------------------------------- geometry
     def _clamp_to_screen(self) -> None:
@@ -225,6 +300,7 @@ class QuickBar(QWidget):
 
     def _apply_geometry(self, expanded: bool, animate: bool = True) -> None:
         self._expanded = expanded
+        self.setToolTip("" if expanded else "Mitscreen — rê chuột vào để mở thanh chụp")
         for child in self._children:
             child.setVisible(expanded)
         target = self._target_rect(expanded)

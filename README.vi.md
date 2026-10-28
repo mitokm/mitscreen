@@ -44,7 +44,7 @@
 
 ![Lớp phủ chọn vùng với kính lúp và toạ độ](docs/screenshots/overlay.png)
 
-### Thanh truy cập nhanh — thanh nổi tự thu thành vệt mảnh
+### Thanh truy cập nhanh — thanh nổi tự thu thành Người Nhện treo tơ
 
 ![Thanh truy cập nhanh: bung ra, menu, thu gọn](docs/quickbar-sequence.png)
 
@@ -52,7 +52,7 @@
   <tr>
     <td align="center"><img src="docs/screenshots/quickbar.png" alt="Thanh truy cập nhanh khi bung ra"><br><sub><b>Khi bung ra</b> — chụp vùng, quay video, mở thư mục, menu, ẩn</sub></td>
     <td align="center"><img src="docs/screenshots/quickbar-menu.png" alt="Menu chức năng của thanh nổi"><br><sub><b>Menu chức năng</b> — chụp lại vùng trước, hẹn giờ, bút lấy màu, bảng điều khiển…</sub></td>
-    <td align="center"><img src="docs/screenshots/quickbar-collapsed.png" alt="Thanh truy cập nhanh khi thu gọn"><br><sub><b>Khi thu gọn</b> — chỉ còn một vệt mảnh, không vướng việc</sub></td>
+    <td align="center"><img src="docs/screenshots/quickbar-collapsed.png" alt="Thanh truy cập nhanh khi thu gọn thành người nhện treo"><br><sub><b>Khi thu gọn</b> — một chú Người Nhện đen treo tơ, chỉ 72 × 78 px</sub></td>
   </tr>
 </table>
 
@@ -100,7 +100,7 @@
 | **Kính lúp** | Khi chọn vùng: phóng to điểm đang trỏ, toạ độ tuyệt đối + mã màu hex dưới con trỏ |
 | **Bút lấy màu** | Bấm lên bất cứ điểm nào trên màn hình để copy mã hex của pixel đó |
 | **Sau khi chụp** | Mặc định: **copy vào clipboard + mở trình sửa** (không hiện thanh chọn). Đổi được sang *chỉ sửa* / *lưu ngay* / *hiện thanh chọn (Sửa / Copy / Lưu / Quay / Huỷ)* |
-| **Thanh truy cập nhanh** | Thanh nổi: chụp vùng / quay video / mở thư mục / menu thêm / ẩn; kéo được, nhớ vị trí, tự thu thành vệt mảnh khi rảnh, tự ẩn khi đang chụp–quay |
+| **Thanh truy cập nhanh** | Thanh nổi: chụp vùng / quay video / mở thư mục / menu thêm / ẩn; kéo được, nhớ vị trí, tự thu thành Người Nhện treo tơ khi rảnh, tự ẩn khi đang chụp–quay |
 | **Trình sửa** | Cắt ảnh, **cắt bỏ & nối**, mũi tên, đường thẳng, chữ nhật, elip, bút vẽ, bút dạ quang, chữ, làm mờ, mosaic, số thứ tự |
 | **Thao tác sửa** | Undo/redo 24 bước, zoom (`Ctrl` + lăn chuột), pan (`Space` + kéo), giữ `Shift` để vuông / 45° |
 | **Hiệu ứng** | Khung viền + bóng đổ, watermark (chữ / màu / độ đậm), đổi kích thước theo % khi lưu |
@@ -197,11 +197,11 @@ chọn vùng, không phụ thuộc tuỳ chọn trên.
 Một thanh nổi nhỏ, mặc định neo ở **giữa cạnh trên** màn hình chính:
 
 - **Rê chuột vào** → bung ra: `Chụp vùng` · `Quay video` · thư mục lưu · **menu chức năng** · `✕`.
-- **Rời chuột ~1 giây** → thu lại thành vệt mảnh (giữ nguyên vị trí, có “tay nắm” ở giữa).
+- **Rời chuột ~1 giây** → thu lại thành hình **Người Nhện người que đen treo ngược** (72 × 78 px): chân gập dáng ngồi móc vào sợi tơ, hai tay bám sợi tơ trước ngực, đầu mặt nạ mắt trắng chúc xuống. Rê chuột vào người nhện là thanh bung ra.
 - **Kéo** thanh ở vùng trống để đổi vị trí; vị trí được ghi nhớ.
 - **Tự ẩn khi chụp/quay** để không lọt vào ảnh hoặc video, hiện lại ngay sau khi xong.
 - Tắt/mở: nút `✕`, menu khay → **Thanh truy cập nhanh**, hoặc Cài đặt.
-- Không thích tự thu gọn thì bỏ tick *“Tự thu lại thành vệt mảnh khi không dùng”*.
+- Không thích tự thu gọn thì bỏ tick *"Tự thu lại khi không dùng"* trong Cài đặt.
 
 Menu chức năng (nút `⌄`): chụp vùng, chụp lại vùng trước, chụp toàn màn hình, chụp cửa
 sổ, chụp hẹn giờ 3 giây, bút lấy màu, bảng điều khiển ảnh, cài đặt — phím tắt hiện tại

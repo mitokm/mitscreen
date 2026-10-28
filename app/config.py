@@ -141,7 +141,7 @@ class Settings:
     watermark_opacity: int = 55        # percent
     pretty_frame: bool = False         # padding + rounded corners + shadow
     show_quickbar: bool = True         # floating quick-access bar
-    quickbar_autohide: bool = True     # fold into a thin sliver when idle
+    quickbar_autohide: bool = True     # fold into a small hanging spider when idle
     show_cursor_in_recordings: bool = True
     record_fps: int = 30
     record_crf: int = 23

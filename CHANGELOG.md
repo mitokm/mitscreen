@@ -3,6 +3,15 @@
 All notable changes to Mitscreen are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow SemVer.
 
+## [Unreleased]
+
+### Changed
+- Quick Bar collapsed state: the thin sliver is replaced by a 72 × 78 px black
+  stick-figure spider hanging upside down from its web line — folded sitting legs
+  hooked at the top, both hands gripping the line, masked head with white eyes at
+  the bottom. Strokes get a thin pale rim so the figure reads on light and dark
+  desktops. Hovering the spider expands the bar as before.
+
 ## [1.0.0] — 2026-10-27
 
 First public release.
