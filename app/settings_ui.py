@@ -124,7 +124,8 @@ class SettingsDialog(QDialog):
         index = self.after_combo.findData(self.settings.after_capture)
         self.after_combo.setCurrentIndex(max(0, index))
         self.after_combo.setToolTip(
-            "Mặc định: copy vào clipboard rồi mở trình sửa, không hiện thanh chọn.")
+            "Ảnh chụp luôn được tự lưu vào thư mục lưu ảnh ngay khi chụp; "
+            "mở trình sửa là sửa trên chính bản đã lưu đó (Ctrl+S ghi đè).")
         form.addRow("Sau khi chụp xong:", self.after_combo)
 
         self.auto_copy = QCheckBox("Tự copy vào clipboard khi bấm Lưu nhanh")

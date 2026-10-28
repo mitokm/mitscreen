@@ -100,8 +100,8 @@ HOTKEY_LABELS: dict[str, str] = {
 
 # What happens right after a region/window capture.
 AFTER_CAPTURE_OPTIONS: dict[str, str] = {
-    "copy_edit": "Copy vào clipboard + mở trình sửa",
-    "edit": "Chỉ mở trình sửa",
+    "copy_edit": "Copy vào clipboard + tự lưu + mở trình sửa",
+    "edit": "Tự lưu + mở trình sửa",
     "save": "Lưu file ngay (không mở trình sửa)",
     "menu": "Hiện thanh chọn (Sửa / Copy / Lưu / Quay / Huỷ)",
 }

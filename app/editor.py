@@ -604,19 +604,19 @@ class EditorWindow(QMainWindow):
     closed = Signal()
 
     def __init__(self, image: QImage, settings: Settings, origin: str = "",
-                 already_copied: bool = False):
+                 already_copied: bool = False, path: Path | None = None):
         super().__init__()
         self.settings = settings
         self.origin = origin
         self.state = ToolState(color=PALETTE[0], width=4, font_size=24)
         self.canvas = Canvas(image, self.state, self)
         self.setCentralWidget(self.canvas)
-        self._path: Path | None = None
+        self._path: Path | None = path
         self._dirty = False
         self._copied = already_copied
         self._tool_actions: dict[str, QAction] = {}
 
-        self.setWindowTitle("Mitscreen — Ảnh mới")
+        self.setWindowTitle(f"Mitscreen — {path.name}" if path else "Mitscreen — Ảnh mới")
         self.resize(1180, 780)
         self.setWindowIcon(icons.icon("snap"))
         self._build_toolbars()
@@ -628,6 +628,9 @@ class EditorWindow(QMainWindow):
         self.canvas.setFocus()
         if already_copied:
             self.statusBar().showMessage("Đã copy vào clipboard — chỉnh sửa rồi Ctrl+S để lưu", 5000)
+        elif path is not None:
+            self.statusBar().showMessage(
+                f"Đã tự lưu: {path} — sửa xong bấm Ctrl+S để ghi đè lên bản này", 6000)
 
     # ------------------------------------------------------------ toolbars
     def _build_toolbars(self) -> None:

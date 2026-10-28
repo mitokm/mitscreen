@@ -6,6 +6,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow 
 ## [Unreleased]
 
 ### Changed
+- Captures are now **auto-saved the moment they are taken**: when the editor
+  opens after a capture it is bound to the file that was just written, and
+  Ctrl+S overwrites that same file — no Save-As step, and closing the editor
+  can no longer lose a capture. Opening an image from the library for editing
+  likewise binds the editor to the library file itself.
+- Clicking the tray icon now opens the **library / workspace** panel instead
+  of starting a region capture (capture stays on the hotkeys, Quick Bar and
+  tray menu).
+- Settings: the Quick Bar on/off checkbox is labelled “Bật thanh truy cập
+  nhanh (Quick Bar)” and the after-capture options state the auto-save
+  behaviour.
 - Quick Bar collapsed state: the thin sliver is replaced by a 72 × 78 px black
   stick-figure spider hanging upside down from its web line — folded sitting legs
   hooked at the top, both hands gripping the line, masked head with white eyes at

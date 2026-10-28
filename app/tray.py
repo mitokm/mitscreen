@@ -199,7 +199,7 @@ class MitscreenApp(QObject):
             QMessageBox.warning(None, "Lỗi chụp màn hình", str(exc))
             return
         self._resume_quickbar()
-        self.open_editor(image, "toàn màn hình")
+        self._open_editor_saved(image, "toàn màn hình")
 
     def _open_overlay(self, mode: str) -> None:
         auto: str | None
@@ -245,22 +245,22 @@ class MitscreenApp(QObject):
             self._save_quick(image, origin)
             self._resume_quickbar()
         else:
-            self.open_editor(image, origin)
+            self._open_editor_saved(image, origin)
             self._resume_quickbar()
 
     def _apply_after_capture(self, image, origin: str) -> None:
-        """Run the configured post-capture behaviour (default: copy + editor)."""
+        """Run the configured post-capture behaviour (default: copy + save + editor)."""
         behavior = self.settings.after_capture
         if behavior == "copy_edit":
             self._copy_image(image)
-            self.open_editor(image, origin, already_copied=True)
-            log("after capture: copied + editor")
+            self._open_editor_saved(image, origin, already_copied=True)
+            log("after capture: copied + auto-saved + editor")
         elif behavior == "save":
             self._save_quick(image, origin)
             log("after capture: saved")
         else:  # "edit"
-            self.open_editor(image, origin)
-            log("after capture: editor")
+            self._open_editor_saved(image, origin)
+            log("after capture: auto-saved + editor")
         self._resume_quickbar()
 
     def _on_overlay_cancelled(self) -> None:
@@ -380,7 +380,12 @@ class MitscreenApp(QObject):
             index += 1
         return candidate
 
-    def _save_quick(self, image, origin: str) -> None:
+    def _persist_capture(self, image, origin: str):
+        """Decorate + write the capture to disk right away; return (path, image).
+
+        ``path`` is None when writing failed (the caller can still open the
+        editor so the capture is not lost).
+        """
         image = self._decorate(image)
         path = self._next_path()
         if self.settings.ask_name_on_save:
@@ -396,18 +401,34 @@ class MitscreenApp(QObject):
                                   compress_level=self.settings.png_compress)
         except OSError as exc:
             QMessageBox.warning(None, "Không lưu được", str(exc))
-            return
+            return None, image
         library.add_capture(path, self.settings, origin)
         if self.settings.auto_copy:
             self._copy_image(image)
         log(f"saved capture: {path}")
-        self._notify("Đã lưu ảnh", str(path))
+        return path, image
+
+    def _save_quick(self, image, origin: str) -> None:
+        path, _image = self._persist_capture(image, origin)
+        if path is not None:
+            self._notify("Đã lưu ảnh", str(path))
+
+    def _open_editor_saved(self, image, origin: str, already_copied: bool = False) -> None:
+        """Auto-save the capture, then open the editor bound to that file.
+
+        Editing + Ctrl+S overwrites the very file that was just saved, so a
+        capture is never lost by closing the editor.
+        """
+        path, decorated = self._persist_capture(image, origin)
+        self.open_editor(decorated, origin, already_copied=already_copied, path=path)
 
     def _copy_image(self, image) -> None:
         QApplication.clipboard().setImage(image)
 
-    def open_editor(self, image, origin: str = "", already_copied: bool = False) -> None:
-        window = EditorWindow(image, self.settings, origin, already_copied=already_copied)
+    def open_editor(self, image, origin: str = "", already_copied: bool = False,
+                    path: Path | None = None) -> None:
+        window = EditorWindow(image, self.settings, origin, already_copied=already_copied,
+                              path=path)
         window.saved.connect(self._on_editor_saved)
         window.closed.connect(lambda w=window: self._forget_editor(w))
         self._editors.append(window)
@@ -472,7 +493,7 @@ class MitscreenApp(QObject):
         if image is None:
             QMessageBox.warning(None, "Không mở được", f"Không đọc được ảnh:\n{path}")
             return
-        self.open_editor(image, f"thư viện: {path.name}")
+        self.open_editor(image, f"thư viện: {path.name}", path=path)
 
     def open_settings(self) -> None:
         dialog = SettingsDialog(self.settings, None)
@@ -526,7 +547,7 @@ class MitscreenApp(QObject):
     # ------------------------------------------------------------------ tray
     def _on_tray_activated(self, reason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
-            self.capture("region")
+            self.show_history()
 
     def _notify(self, title: str, message: str) -> None:
         try:
