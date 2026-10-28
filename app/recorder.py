@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,17 @@ from .recframe import RecordingFrame
 
 
 def find_ffmpeg() -> str | None:
+    # bundled copies first: next to the exe (installer layout) or in the
+    # PyInstaller bundle, then PATH, then the classic fixed locations
+    bundled: list[Path] = []
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        bundled.append(Path(meipass) / "ffmpeg.exe")
+    bundled.append(Path(sys.executable).resolve().parent / "ffmpeg.exe")
+    bundled.append(Path(__file__).resolve().parent.parent / "ffmpeg.exe")
+    for path in bundled:
+        if path.is_file():
+            return str(path)
     candidate = shutil.which("ffmpeg")
     if candidate:
         return candidate
