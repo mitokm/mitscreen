@@ -411,6 +411,35 @@ class Canvas(QWidget):
         if style == "double":
             draw_head(p1, -ux, -uy)
 
+    # ------------------------------------------------- white-canvas growth
+    def _expand_to_fit(self, rect: QRectF, inflate: float = 4.0) -> QPointF:
+        """Grow the picture with a white margin so `rect` fits inside it.
+
+        Screenpresso-style behaviour: an annotation that spills past an edge
+        extends the canvas instead of being clipped.  Returns the shift that
+        must be added to image coordinates (0,0 when nothing grew).  The
+        caller must have pushed an undo step already, so one Ctrl+Z undoes
+        both the growth and the drawing.
+        """
+        r = rect.adjusted(-inflate, -inflate, inflate, inflate)
+        cap = 2000
+        left = min(cap, max(0, math.ceil(-r.left())))
+        top = min(cap, max(0, math.ceil(-r.top())))
+        right = min(cap, max(0, math.ceil(r.right() - self._img.width())))
+        bottom = min(cap, max(0, math.ceil(r.bottom() - self._img.height())))
+        if not (left or top or right or bottom):
+            return QPointF(0, 0)
+        grown = QImage(self._img.width() + left + right,
+                       self._img.height() + top + bottom,
+                       QImage.Format.Format_ARGB32)
+        grown.fill(QColor("#ffffff"))
+        painter = QPainter(grown)
+        painter.drawImage(left, top, self._img)
+        painter.end()
+        self._img = grown
+        self.fit_to_view()
+        return QPointF(left, top)
+
     # ---------------------------------------------------------- committing
     def _commit(self) -> None:
         if self._drag_start is None or self._drag_cur is None:
@@ -444,6 +473,18 @@ class Canvas(QWidget):
         elif tool == "magnify" and min(abs(p2.x() - p1.x()), abs(p2.y() - p1.y())) < 16:
             self._undo.pop()  # accidental click, not a loupe
         else:
+            if tool in ("arrow", "line", "rect", "ellipse", "pen", "highlight"):
+                pts = self._points if tool == "pen" else [p1, p2]
+                xs = [q.x() for q in pts]
+                ys = [q.y() for q in pts]
+                bbox = QRectF(min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys))
+                grow = self.state.width * 2 + 12
+                if tool == "arrow":
+                    grow += max(12.0, self.state.width * 4.2)  # arrowhead sweep
+                shift = self._expand_to_fit(bbox, inflate=grow)
+                if not shift.isNull():
+                    p1, p2 = p1 + shift, p2 + shift
+                    self._points = [q + shift for q in self._points]
             painter = QPainter(self._img)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
@@ -533,12 +574,16 @@ class Canvas(QWidget):
         if not commit or not text:
             self.setFocus()
             return
-        self._push_undo()
-        painter = QPainter(self._img)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         font = QFont("Segoe UI", self.state.font_size)
         font.setPixelSize(max(10, int(self.state.font_size)))
         font.setWeight(QFont.Weight.DemiBold)
+        text_box = QRectF(pos.x() - 3, pos.y() - self.state.font_size * 1.15,
+                          QFontMetricsF(font).horizontalAdvance(text) + 8,
+                          self.state.font_size * 1.5)
+        self._push_undo()
+        pos = pos + self._expand_to_fit(text_box, inflate=3)
+        painter = QPainter(self._img)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         path = QPainterPath()
         path.addText(pos, font, text)
         painter.setPen(QPen(QColor(0, 0, 0, 160), max(2.0, self.state.width * 0.7)))
@@ -629,7 +674,6 @@ class Canvas(QWidget):
 
     # ------------------------------------------------------------- badge
     def _draw_badge(self, pos: QPointF) -> None:
-        self._push_undo()
         label = badge_label(self.state.next_badge, self.state.badge_style)
         radius = max(12.0, self.state.width * 4.0)
         font = QFont("Segoe UI", 10)
@@ -638,11 +682,17 @@ class Canvas(QWidget):
         # widen the circle when the label needs it ("10", "aa", …)
         text_w = QFontMetricsF(font).horizontalAdvance(label)
         radius = max(radius, text_w / 2 + radius * 0.42)
+        center = QPointF(pos.x() + radius, pos.y() + radius)
+        self._push_undo()
+        # a badge stamped half outside the picture grows a white margin for it
+        shift = self._expand_to_fit(
+            QRectF(center.x() - radius, center.y() - radius, radius * 2, radius * 2),
+            inflate=3)
+        center += shift
         painter = QPainter(self._img)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setPen(QPen(QColor("#ffffff"), max(2.0, radius * 0.12)))
         painter.setBrush(QColor(self.state.color))
-        center = QPointF(pos.x() + radius, pos.y() + radius)
         painter.drawEllipse(center, radius, radius)
         painter.setFont(font)
         painter.setPen(QColor("#ffffff"))
@@ -818,7 +868,9 @@ class EditorWindow(QMainWindow):
         act_watermark.triggered.connect(self.apply_watermark)
         act_resize = QAction("Đổi kích thước…", self)
         act_resize.triggered.connect(self.resize_dialog)
-        for a in (act_frame, act_watermark, act_resize):
+        act_expand = QAction("Mở rộng nền trắng…", self)
+        act_expand.triggered.connect(self.expand_canvas_dialog)
+        for a in (act_frame, act_watermark, act_resize, act_expand):
             menu.addAction(a)
         effects_btn.setMenu(menu)
         top.addWidget(effects_btn)
@@ -990,6 +1042,25 @@ class EditorWindow(QMainWindow):
         self.state.font_size = value
 
     # -------------------------------------------------------------- actions
+    def expand_canvas_dialog(self) -> None:
+        """Manually pad the picture with a white margin on all four sides."""
+        value, ok = QInputDialog.getInt(
+            self, "Mở rộng nền trắng", "Thêm lề trắng cho mỗi phía (px):",
+            100, 10, 1000, 10)
+        if not ok:
+            return
+        img = self.canvas.image()
+        grown = QImage(img.width() + value * 2, img.height() + value * 2,
+                       QImage.Format.Format_ARGB32)
+        grown.fill(QColor("#ffffff"))
+        painter = QPainter(grown)
+        painter.drawImage(value, value, img)
+        painter.end()
+        self.canvas._push_undo()
+        self.canvas.set_image(grown)
+        self._on_changed()
+        self.statusBar().showMessage(f"Đã mở rộng nền trắng {value}px mỗi phía", 2500)
+
     def apply_frame(self) -> None:
         self.canvas._push_undo()
         self.canvas.set_image(imageutil.add_pretty_frame(self.canvas.image()))

@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow 
 ## [Unreleased]
 
 ### Added
+- **White-canvas growth (Screenpresso-style)**: when an annotation — arrow,
+  shape, freehand stroke, text, or a step badge — spills past the picture's
+  edge, the picture automatically grows a white margin so the whole
+  annotation fits instead of being clipped. One Ctrl+Z undoes both the
+  growth and the drawing. A manual “Mở rộng nền trắng…” action in the
+  Effects menu pads all four sides by a chosen amount.
 - **Arrow styles** for the Arrow tool (options bar): single (classic),
   double-headed, dot-tail, and solid block — all in the current colour/width.
 - **Letter badges**: the step-badge tool can stamp letters (`a, b, c…` or
