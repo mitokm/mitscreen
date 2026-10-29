@@ -8,12 +8,13 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QPointF, QRect, QRectF, QSize, QSizeF, Qt, Signal
-from PySide6.QtGui import (QAction, QActionGroup, QBrush, QColor, QFont, QImage,
-                           QKeySequence, QPainter, QPainterPath, QPen, QPixmap)
-from PySide6.QtWidgets import (QApplication, QColorDialog, QDialog, QDialogButtonBox,
-                               QFileDialog, QFormLayout, QInputDialog, QLabel, QLineEdit,
-                               QMainWindow, QMenu, QMessageBox, QSlider, QSpinBox,
-                               QStatusBar, QToolBar, QToolButton, QWidget)
+from PySide6.QtGui import (QAction, QActionGroup, QBrush, QColor, QFont, QFontMetricsF,
+                           QImage, QKeySequence, QPainter, QPainterPath, QPen, QPixmap)
+from PySide6.QtWidgets import (QApplication, QColorDialog, QComboBox, QDialog,
+                               QDialogButtonBox, QFileDialog, QFormLayout, QInputDialog,
+                               QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox,
+                               QSlider, QSpinBox, QStatusBar, QToolBar, QToolButton,
+                               QWidget)
 
 from . import icons, imageutil, library
 from .config import Settings
@@ -30,6 +31,7 @@ TOOLS: list[tuple[str, str, str]] = [
     ("text", "Chữ", "T"),
     ("blur", "Làm mờ", "B"),
     ("mosaic", "Mosaic", "X"),
+    ("magnify", "Zoom vùng", "Z"),
     ("badge", "Số thứ tự", "N"),
 ]
 
@@ -39,6 +41,36 @@ PALETTE = ["#ff3b30", "#ff9500", "#ffd60a", "#34c759", "#32ade6",
 ACCENT = "#2563eb"
 
 
+ARROW_STYLES: list[tuple[str, str]] = [
+    ("single", "Thường"),
+    ("double", "Hai đầu"),
+    ("dot", "Đuôi chấm tròn"),
+    ("block", "Đậm đặc"),
+]
+
+BADGE_STYLES: list[tuple[str, str]] = [
+    ("number", "Số 1, 2, 3…"),
+    ("lower", "Chữ a, b, c…"),
+    ("upper", "Chữ A, B, C…"),
+]
+
+MAGNIFY_FACTORS: list[tuple[str, float]] = [
+    ("1.5×", 1.5), ("2×", 2.0), ("2.5×", 2.5), ("3×", 3.0), ("4×", 4.0),
+]
+
+
+def badge_label(counter: int, style: str) -> str:
+    """Badge text for a 1-based counter: 3 -> '3' / 'c' / 'C'; 27 -> 'aa'."""
+    if style in ("lower", "upper"):
+        letters = ""
+        n = max(1, counter)
+        while n > 0:
+            n, rem = divmod(n - 1, 26)
+            letters = chr(ord("a") + rem) + letters
+        return letters.upper() if style == "upper" else letters
+    return str(counter)
+
+
 @dataclass
 class ToolState:
     tool: str = "arrow"
@@ -46,6 +78,9 @@ class ToolState:
     width: int = 4
     font_size: int = 24
     next_badge: int = 1
+    arrow_style: str = "single"
+    badge_style: str = "number"
+    magnify_factor: float = 2.0
 
 
 # --------------------------------------------------------------------------
@@ -59,7 +94,7 @@ class Canvas(QWidget):
     TOOL_KEYS = {
         "c": "crop", "u": "cutout", "a": "arrow", "l": "line", "r": "rect", "e": "ellipse",
         "p": "pen", "h": "highlight", "t": "text", "b": "blur", "x": "mosaic",
-        "n": "badge",
+        "z": "magnify", "n": "badge",
     }
 
     def __init__(self, image: QImage, state: ToolState, parent=None):
@@ -259,30 +294,122 @@ class Canvas(QWidget):
             painter.setPen(QPen(QColor(ACCENT), 1.4))
             painter.setBrush(QColor(37, 99, 235, 40))
             painter.drawRect(rect)
+        elif tool == "magnify":
+            radius = min(rect.width(), rect.height()) / 2
+            self._paint_magnify(painter, rect.center(), radius, preview=preview)
+
+    def _paint_magnify(self, painter: QPainter, center: QPointF, radius: float,
+                       preview: bool = False) -> None:
+        """Circular loupe: the area under the circle shown magnified in place."""
+        img_w, img_h = self._img.width(), self._img.height()
+        # keep the whole circle inside the picture so source mapping stays exact
+        radius = min(radius, center.x(), center.y(), img_w - center.x(), img_h - center.y())
+        if radius < 6:
+            if preview:
+                painter.setPen(QPen(QColor(ACCENT), 1.4, Qt.PenStyle.DashLine))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawEllipse(center, max(radius, 1.0), max(radius, 1.0))
+            return
+        factor = self.state.magnify_factor
+        src_side = 2 * radius / factor
+        src = QRectF(center.x() - src_side / 2, center.y() - src_side / 2,
+                     src_side, src_side)
+        # snapshot the source first: on commit we paint onto the same image
+        snap_rect = src.toRect().adjusted(-1, -1, 1, 1).intersected(
+            QRect(0, 0, img_w, img_h))
+        snapshot = self._img.copy(snap_rect)
+        src_in_snap = QRectF(src.x() - snap_rect.x(), src.y() - snap_rect.y(),
+                             src.width(), src.height())
+        target = QRectF(center.x() - radius, center.y() - radius,
+                        radius * 2, radius * 2)
+
+        painter.save()
+        if not preview:
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QColor(0, 0, 0, 70))
+            painter.drawEllipse(center + QPointF(0, radius * 0.05 + 2),
+                                radius * 1.01, radius * 1.01)
+        clip = QPainterPath()
+        clip.addEllipse(center, radius, radius)
+        painter.setClipPath(clip)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+        painter.drawImage(target, snapshot, src_in_snap)
+        painter.restore()
+
+        ring = max(2.5, self.state.width * 0.9)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(QPen(QColor("#ffffff"), ring + 1.6))
+        painter.drawEllipse(center, radius - (ring + 1.6) / 2, radius - (ring + 1.6) / 2)
+        painter.setPen(QPen(QColor(self.state.color), ring))
+        painter.drawEllipse(center, radius - ring / 2, radius - ring / 2)
+        if preview:
+            painter.setPen(QPen(QColor(ACCENT), 1.2, Qt.PenStyle.DashLine))
+            painter.drawEllipse(center, radius + 3, radius + 3)
 
     def _paint_arrow(self, painter: QPainter, p1: QPointF, p2: QPointF) -> None:
-        pen = self._shape_pen()
-        painter.setPen(pen)
-        painter.setBrush(QColor(self.state.color))
+        color = QColor(self.state.color)
         dx, dy = p2.x() - p1.x(), p2.y() - p1.y()
         length = math.hypot(dx, dy)
         if length < 1:
             return
+        ux, uy = dx / length, dy / length
+        style = self.state.arrow_style
+
+        if style == "block":
+            # one filled polygon: slim shaft widening into a solid head
+            head = min(max(18.0, self.state.width * 5.0), length * 0.62)
+            shaft_half = max(2.2, self.state.width * 0.85)
+            head_half = shaft_half * 2.1
+            base = QPointF(p2.x() - ux * head, p2.y() - uy * head)
+
+            def off(pt: QPointF, dist: float) -> QPointF:
+                return QPointF(pt.x() - uy * dist, pt.y() + ux * dist)
+
+            polygon = [off(p1, shaft_half), off(base, shaft_half), off(base, head_half),
+                       p2, off(base, -head_half), off(base, -shaft_half),
+                       off(p1, -shaft_half)]
+            path = QPainterPath(polygon[0])
+            for pt in polygon[1:]:
+                path.lineTo(pt)
+            path.closeSubpath()
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(color)
+            painter.drawPath(path)
+            return
+
         head = max(12.0, self.state.width * 4.2)
         if head > length:
             head = length
-        ux, uy = dx / length, dy / length
-        base = QPointF(p2.x() - ux * head, p2.y() - uy * head)
-        painter.drawLine(p1, base)
         half = head * 0.52
-        left = QPointF(base.x() - uy * half, base.y() + ux * half)
-        right = QPointF(base.x() + uy * half, base.y() - ux * half)
-        head_path = QPainterPath(p2)
-        head_path.lineTo(left)
-        head_path.lineTo(right)
-        head_path.closeSubpath()
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawPath(head_path)
+
+        def draw_head(tip: QPointF, dirx: float, diry: float) -> None:
+            base = QPointF(tip.x() - dirx * head, tip.y() - diry * head)
+            left = QPointF(base.x() - diry * half, base.y() + dirx * half)
+            right = QPointF(base.x() + diry * half, base.y() - dirx * half)
+            path = QPainterPath(tip)
+            path.lineTo(left)
+            path.lineTo(right)
+            path.closeSubpath()
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(color)
+            painter.drawPath(path)
+
+        start, end = p1, p2
+        if style == "dot":
+            dot_r = max(4.0, self.state.width * 1.15)
+            start = QPointF(p1.x() + ux * dot_r, p1.y() + uy * dot_r)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(color)
+            painter.drawEllipse(p1, dot_r, dot_r)
+        elif style == "double":
+            start = QPointF(p1.x() + ux * head, p1.y() + uy * head)
+        end = QPointF(p2.x() - ux * head, p2.y() - uy * head)
+        painter.setPen(self._shape_pen())
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawLine(start, end)
+        draw_head(p2, ux, uy)
+        if style == "double":
+            draw_head(p1, -ux, -uy)
 
     # ---------------------------------------------------------- committing
     def _commit(self) -> None:
@@ -314,6 +441,8 @@ class Canvas(QWidget):
                 else:
                     block = max(6, min(24, int(min(rect.width(), rect.height()) / 12)))
                     self._img = imageutil.pixelate_region(self._img, rect, block)
+        elif tool == "magnify" and min(abs(p2.x() - p1.x()), abs(p2.y() - p1.y())) < 16:
+            self._undo.pop()  # accidental click, not a loupe
         else:
             painter = QPainter(self._img)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -462,7 +591,7 @@ class Canvas(QWidget):
             angle = round(math.atan2(dy, dx) / (math.pi / 4)) * (math.pi / 4)
             length = math.hypot(dx, dy)
             pos = QPointF(start.x() + math.cos(angle) * length, start.y() + math.sin(angle) * length)
-        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier and self.state.tool in ("rect", "ellipse", "crop"):
+        if event.modifiers() & Qt.KeyboardModifier.ShiftModifier and self.state.tool in ("rect", "ellipse", "crop", "magnify"):
             start = self._drag_start
             side = max(abs(pos.x() - start.x()), abs(pos.y() - start.y()))
             pos = QPointF(start.x() + math.copysign(side, pos.x() - start.x()),
@@ -501,20 +630,24 @@ class Canvas(QWidget):
     # ------------------------------------------------------------- badge
     def _draw_badge(self, pos: QPointF) -> None:
         self._push_undo()
+        label = badge_label(self.state.next_badge, self.state.badge_style)
         radius = max(12.0, self.state.width * 4.0)
+        font = QFont("Segoe UI", 10)
+        font.setPixelSize(int(radius * 1.15))
+        font.setWeight(QFont.Weight.Bold)
+        # widen the circle when the label needs it ("10", "aa", …)
+        text_w = QFontMetricsF(font).horizontalAdvance(label)
+        radius = max(radius, text_w / 2 + radius * 0.42)
         painter = QPainter(self._img)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setPen(QPen(QColor("#ffffff"), max(2.0, radius * 0.12)))
         painter.setBrush(QColor(self.state.color))
         center = QPointF(pos.x() + radius, pos.y() + radius)
         painter.drawEllipse(center, radius, radius)
-        font = QFont("Segoe UI", 10)
-        font.setPixelSize(int(radius * 1.15))
-        font.setWeight(QFont.Weight.Bold)
         painter.setFont(font)
         painter.setPen(QColor("#ffffff"))
         painter.drawText(QRectF(center.x() - radius, center.y() - radius, radius * 2, radius * 2),
-                         Qt.AlignmentFlag.AlignCenter, str(self.state.next_badge))
+                         Qt.AlignmentFlag.AlignCenter, label)
         painter.end()
         self.state.next_badge += 1
         self.update()
@@ -760,6 +893,38 @@ class EditorWindow(QMainWindow):
         self.font_spin.setSuffix(" px")
         self.font_spin.valueChanged.connect(self._set_font)
         options.addWidget(self.font_spin)
+        options.addSeparator()
+        options.addWidget(QLabel(" Mũi tên: "))
+        self.arrow_combo = QComboBox()
+        for key, label in ARROW_STYLES:
+            self.arrow_combo.addItem(label, key)
+        self.arrow_combo.setToolTip("Kiểu mũi tên cho công cụ Mũi tên (A)")
+        self.arrow_combo.currentIndexChanged.connect(self._set_arrow_style)
+        options.addWidget(self.arrow_combo)
+        options.addSeparator()
+        options.addWidget(QLabel(" Đánh số: "))
+        self.badge_combo = QComboBox()
+        for key, label in BADGE_STYLES:
+            self.badge_combo.addItem(label, key)
+        self.badge_combo.setToolTip("Kiểu ký hiệu cho công cụ Số thứ tự (N)")
+        self.badge_combo.currentIndexChanged.connect(self._set_badge_style)
+        options.addWidget(self.badge_combo)
+        options.addWidget(QLabel(" từ "))
+        self.badge_spin = QSpinBox()
+        self.badge_spin.setRange(1, 999)
+        self.badge_spin.setValue(self.state.next_badge)
+        self.badge_spin.setToolTip("Số/chữ bắt đầu — đặt 3 để đánh dấu bắt đầu từ 3 (hoặc c/C)")
+        self.badge_spin.valueChanged.connect(self._set_badge_start)
+        options.addWidget(self.badge_spin)
+        options.addSeparator()
+        options.addWidget(QLabel(" Zoom vùng: "))
+        self.zoom_combo = QComboBox()
+        for label, factor in MAGNIFY_FACTORS:
+            self.zoom_combo.addItem(label, factor)
+        self.zoom_combo.setCurrentIndex(1)
+        self.zoom_combo.setToolTip("Hệ số phóng to cho công cụ Zoom vùng (Z)")
+        self.zoom_combo.currentIndexChanged.connect(self._set_magnify_factor)
+        options.addWidget(self.zoom_combo)
 
     def _build_status(self) -> None:
         bar = QStatusBar(self)
@@ -778,17 +943,32 @@ class EditorWindow(QMainWindow):
 
     def _on_changed(self) -> None:
         self._dirty = True
+        spin = getattr(self, "badge_spin", None)
+        if spin is not None and spin.value() != self.state.next_badge:
+            spin.blockSignals(True)
+            spin.setValue(self.state.next_badge)
+            spin.blockSignals(False)
         self._refresh_status()
         self.setWindowTitle(f"Mitscreen — {self._path.name if self._path else 'Ảnh mới'} *")
 
     # ------------------------------------------------------------- options
     def _select_tool(self, key: str) -> None:
         self.state.tool = key
-        if key == "badge":
-            self.state.next_badge = 1
         if key in self._tool_actions:
             self._tool_actions[key].setChecked(True)
         self.canvas.setFocus()
+
+    def _set_arrow_style(self, index: int) -> None:
+        self.state.arrow_style = self.arrow_combo.itemData(index)
+
+    def _set_badge_style(self, index: int) -> None:
+        self.state.badge_style = self.badge_combo.itemData(index)
+
+    def _set_badge_start(self, value: int) -> None:
+        self.state.next_badge = value
+
+    def _set_magnify_factor(self, index: int) -> None:
+        self.state.magnify_factor = float(self.zoom_combo.itemData(index))
 
     def _set_color(self, color: str) -> None:
         self.state.color = color

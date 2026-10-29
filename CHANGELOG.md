@@ -5,7 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow 
 
 ## [Unreleased]
 
+### Added
+- **Arrow styles** for the Arrow tool (options bar): single (classic),
+  double-headed, dot-tail, and solid block — all in the current colour/width.
+- **Letter badges**: the step-badge tool can stamp letters (`a, b, c…` or
+  `A, B, C…`) as well as numbers, and a new **“từ” start-value field** sets
+  where the sequence begins (e.g. start at 3, or at c).
+- **Magnifier loupe tool** (`Z`): drag a circle over any area to embed a
+  zoomed view of it (1.5×–4×, selectable), with a coloured ring and shadow.
+
 ### Fixed
+- Switching to the badge tool no longer resets the counter to 1 — the
+  sequence now continues across tool switches, and the start value is
+  editable in the options bar.
 - Editor keyboard shortcuts promised in the toolbar labels were never wired
   up and did nothing: **Ctrl+S** (save), **Ctrl+Z** (undo), **Ctrl+Y** /
   Ctrl+Shift+Z (redo), **Ctrl+C** (copy) and **Ctrl+P** (print) now work.

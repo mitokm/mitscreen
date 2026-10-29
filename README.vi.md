@@ -101,7 +101,7 @@
 | **Bút lấy màu** | Bấm lên bất cứ điểm nào trên màn hình để copy mã hex của pixel đó |
 | **Sau khi chụp** | Mặc định: **copy vào clipboard + mở trình sửa** (không hiện thanh chọn). Đổi được sang *chỉ sửa* / *lưu ngay* / *hiện thanh chọn (Sửa / Copy / Lưu / Quay / Huỷ)* |
 | **Thanh truy cập nhanh** | Thanh nổi: chụp vùng / quay video / mở thư mục / menu thêm / ẩn; kéo được, nhớ vị trí, tự thu thành Người Nhện treo tơ khi rảnh, tự ẩn khi đang chụp–quay |
-| **Trình sửa** | Cắt ảnh, **cắt bỏ & nối**, mũi tên, đường thẳng, chữ nhật, elip, bút vẽ, bút dạ quang, chữ, làm mờ, mosaic, số thứ tự |
+| **Trình sửa** | Cắt ảnh, **cắt bỏ & nối**, mũi tên (4 kiểu: thường, hai đầu, đuôi chấm tròn, đậm đặc), đường thẳng, chữ nhật, elip, bút vẽ, bút dạ quang, chữ, làm mờ, mosaic, **zoom vùng (kính lúp)**, đánh số thứ tự (số hoặc chữ a–z / A–Z, đặt được số bắt đầu) |
 | **Thao tác sửa** | Undo/redo 24 bước, zoom (`Ctrl` + lăn chuột), pan (`Space` + kéo), giữ `Shift` để vuông / 45° |
 | **Hiệu ứng** | Khung viền + bóng đổ, watermark (chữ / màu / độ đậm), đổi kích thước theo % khi lưu |
 | **Xuất** | PNG / JPEG / WebP, copy clipboard (kèm tệp để dán vào Explorer), in ấn |
@@ -155,6 +155,7 @@ những “chủ sở hữu” thường gặp của phím `Print Screen`).
 | `A` / `L` / `R` / `E` | Mũi tên / Đường thẳng / Chữ nhật / Elip |
 | `P` / `H` / `T` | Bút vẽ / Bút dạ quang / Chữ |
 | `B` / `X` / `N` | Làm mờ / Mosaic / Số thứ tự |
+| `Z` | Zoom vùng (kính lúp) |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo (24 bước) |
 | `Ctrl+C` / `Ctrl+S` / `Ctrl+Shift+S` / `Ctrl+P` | Copy / Lưu / Lưu thành… / In |
 | `F2` | Đổi tên tệp |
@@ -282,7 +283,7 @@ app/
   imageutil.py          PIL <-> QImage, chụp, mờ/pixelate, khung, watermark, mã hoá
   overlay.py            lớp phủ chọn vùng: đóng băng, làm tối, kính lúp, thanh hành động
   quickbar.py           thanh truy cập nhanh: nổi, kéo được, tự thu gọn, tự ẩn
-  editor.py             canvas + 12 công cụ + undo/redo + lưu/copy/in
+  editor.py             canvas + 13 công cụ + undo/redo + lưu/copy/in
   history.py            bảng điều khiển: sidebar + lưới thumbnail + thanh nút
   library.py            bản sao thư viện + sidecar JSON
   recorder.py           ffmpeg gdigrab + thanh dừng nổi
@@ -301,7 +302,7 @@ docs/screenshots/       ảnh chụp màn hình dùng trong tài liệu này
 |---|---:|---|
 | `run.pyw` | 105 | Điểm khởi động |
 | `app/tray.py` | 554 | Điều phối khay, phím tắt, luồng chụp/quay, thanh nhanh |
-| `app/editor.py` | 995 | Trình sửa: canvas, 12 công cụ, undo/redo, lưu/copy/in |
+| `app/editor.py` | 1,224 | Trình sửa: canvas, 13 công cụ, undo/redo, lưu/copy/in |
 | `app/overlay.py` | 445 | Lớp phủ chọn vùng + kính lúp + thanh hành động |
 | `app/win32util.py` | 426 | Win32 bằng ctypes |
 | `app/quickbar.py` | 339 | Thanh truy cập nhanh |

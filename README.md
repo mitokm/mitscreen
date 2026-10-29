@@ -103,7 +103,7 @@
 | **Colour picker** | Click anywhere on screen to copy that pixel’s hex code to the clipboard |
 | **After capture** | Default: **copy to clipboard + open the editor** — no intermediate menu. Switchable to *editor only*, *save immediately*, or the classic *action bar (Edit / Copy / Save / Record / Cancel)* |
 | **Quick Bar** | Floating bar (top-centre by default): region capture, record, open save folder, function menu, hide. Draggable, remembers its position, folds into a small hanging spider figure when idle, hides itself while you capture or record |
-| **Editor** | Crop, **cutout & stitch**, arrow, line, rectangle, ellipse, pen, highlighter, text, blur, mosaic / pixelate, step-number badges |
+| **Editor** | Crop, **cutout & stitch**, arrow (4 styles: single, double-headed, dot-tail, solid block), line, rectangle, ellipse, pen, highlighter, text, blur, mosaic / pixelate, **magnifier loupe**, step badges (numbers or letters a–z / A–Z, with a settable start value) |
 | **Editing** | 24-step undo/redo, zoom (`Ctrl` + wheel), pan (`Space` + drag), `Shift` constrains to square / 45° |
 | **Effects** | Pretty frame (padding + rounded corners + drop shadow), text watermark (colour + opacity), resize by % on save |
 | **Export** | PNG / JPEG / WebP, copy to clipboard (image **and** a file, so pasting into Explorer works), print |
@@ -157,6 +157,7 @@ OneDrive and other screenshot tools are the usual owners of `Print Screen`).
 | `A` / `L` / `R` / `E` | Arrow / Line / Rectangle / Ellipse |
 | `P` / `H` / `T` | Pen / Highlighter / Text |
 | `B` / `X` / `N` | Blur / Mosaic / Step-number badge |
+| `Z` | Magnifier loupe |
 | `Ctrl+Z` / `Ctrl+Y` | Undo / redo (24 steps) |
 | `Ctrl+C` / `Ctrl+S` / `Ctrl+Shift+S` / `Ctrl+P` | Copy / Save / Save as… / Print |
 | `F2` | Rename the file |
@@ -283,7 +284,7 @@ app/
   imageutil.py          PIL <-> QImage, grabbing, blur/pixelate, frame, watermark, encoding
   overlay.py            region overlay: frozen desktop, dimming, magnifier, action bar
   quickbar.py           floating Quick Bar: draggable, auto-folding, self-hiding
-  editor.py             canvas + 12 tools + undo/redo + save/copy/print
+  editor.py             canvas + 13 tools + undo/redo + save/copy/print
   history.py            workspace window: sidebar + thumbnail grid + action bar
   library.py            library copies + JSON sidecars
   recorder.py           ffmpeg gdigrab wrapper + floating stop bar
@@ -304,7 +305,7 @@ docs/screenshots/       the screenshots used in this README
 |---|---:|---|
 | `run.pyw` | 105 | Launcher (DPI-aware, single-instance, theme, tray) |
 | `app/tray.py` | 554 | Controller: tray icon, hotkeys, capture/record flows, Quick Bar |
-| `app/editor.py` | 995 | Editor: canvas, 12 tools, undo/redo, save/copy/print |
+| `app/editor.py` | 1,224 | Editor: canvas, 13 tools, undo/redo, save/copy/print |
 | `app/overlay.py` | 445 | Region overlay + magnifier + action bar |
 | `app/win32util.py` | 426 | Win32 via ctypes: DPI, hotkeys, window-at-point, autostart |
 | `app/quickbar.py` | 339 | Quick Bar |

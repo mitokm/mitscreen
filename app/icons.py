@@ -243,6 +243,16 @@ def _timer(p: QPainter, c: str) -> None:
     p.drawLine(QPointF(32, 10), QPointF(32, 18))
 
 
+def _magnifier(p: QPainter, c: str) -> None:
+    p.setPen(_pen(c, 5))
+    p.setBrush(Qt.BrushStyle.NoBrush)
+    p.drawEllipse(QPointF(28, 28), 15, 15)
+    p.drawLine(QPointF(39, 39), QPointF(52, 52))
+    p.setPen(_pen(c, 4))
+    p.drawLine(QPointF(21, 28), QPointF(35, 28))
+    p.drawLine(QPointF(28, 21), QPointF(28, 35))
+
+
 def _eyedropper(p: QPainter, c: str) -> None:
     p.setPen(_pen(c, 5))
     p.drawLine(QPointF(17, 47), QPointF(35, 29))
@@ -300,6 +310,7 @@ _PAINTERS = {
     "arrow": _arrow, "line": _line, "rect": _rect, "ellipse": _ellipse,
     "pen": _pen_tool, "highlight": _highlighter, "text": _text,
     "blur": _blur, "mosaic": _mosaic, "badge": _badge, "crop": _crop,
+    "magnify": _magnifier,
     "cutout": _cutout, "timer": _timer, "eyedropper": _eyedropper, "share": _share,
     "undo": _undo, "redo": _redo, "copy": _copy, "save": _save,
     "print": _print, "close": _close, "settings": _settings,
