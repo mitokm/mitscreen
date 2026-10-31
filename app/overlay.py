@@ -83,6 +83,10 @@ class RegionOverlay(QWidget):
         self._dragging = False
         self._cursor = QPointF(self._desktop_rect.center())
         self._hover_window: QRect | None = None
+        self._cands: list[QRect] = []
+        self._cand_idx = 0
+        self._cand_point: QPoint | None = None
+        self._press_cand: QRect | None = None
         self._action_bar: ActionBar | None = None
         self._done = False
 
@@ -109,6 +113,31 @@ class RegionOverlay(QWidget):
 
     def _selection_from(self, a: QPoint, b: QPoint) -> QRect:
         return QRect(a, b).normalized()
+
+    # ------------------------------------------------- frame auto-detection
+    def _update_candidates(self, gp: QPoint) -> None:
+        """Detect capture frames under the cursor (content area first)."""
+        if self._cand_point == gp:
+            return
+        self._cand_point = gp
+        rects = win32util.window_candidates(int(gp.x()), int(gp.y()), {os.getpid()})
+        local = [r.translated(-self._desktop_rect.topLeft()) for r in rects]
+        local = [r for r in local if r.width() >= 8 and r.height() >= 8]
+        if local != self._cands:
+            self._cands = local
+            self._cand_idx = 0
+        self._hover_window = self._cands[self._cand_idx] if self._cands else None
+        if self.mode == "window" and self._hover_window is not None:
+            self._sel = QRect(self._hover_window)
+
+    def _cycle_candidate(self, step: int) -> None:
+        if len(self._cands) < 2:
+            return
+        self._cand_idx = (self._cand_idx + step) % len(self._cands)
+        self._hover_window = self._cands[self._cand_idx]
+        if self.mode == "window":
+            self._sel = QRect(self._hover_window)
+        self.update()
 
     # ---------------------------------------------------------------- show
     def begin(self) -> None:
@@ -150,14 +179,19 @@ class RegionOverlay(QWidget):
                 self._draw_size_badge(painter, sel)
                 self._draw_guides(painter, sel)
 
-        if self.mode == "window" and self._hover_window and not self._dragging:
-            rect = self._hover_window.translated(-self._desktop_rect.topLeft())
+        if (self._hover_window is not None and not self._dragging
+                and (self.mode == "window" or self._sel is None)):
+            rect = self._hover_window  # already overlay-local coordinates
             painter.save()
-            painter.setPen(QPen(QColor("#4f9cff"), 2))
-            painter.drawRect(rect.adjusted(0, 0, -1, -1))
-            painter.fillRect(rect, QColor(79, 156, 255, 26))
+            painter.setClipRect(rect)
+            painter.drawImage(self.rect(), self._image)
             painter.restore()
-            painter.setPen(QColor("#cfe0ff"))
+            painter.save()
+            painter.setPen(QPen(QColor("#ff2d20"), 2))
+            painter.drawRect(rect.adjusted(0, 0, -1, -1))
+            painter.fillRect(rect, QColor(255, 45, 32, 20))
+            painter.restore()
+            painter.setPen(QColor("#ffd9d6"))
             painter.setFont(QFont("Segoe UI", 9))
             painter.drawText(rect.adjusted(6, 4, -6, -4),
                              Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft,
@@ -167,8 +201,9 @@ class RegionOverlay(QWidget):
         self._draw_magnifier(painter)
 
     def _draw_hint(self, painter: QPainter) -> None:
-        text = ("Chọn cửa sổ: di chuột rồi bấm" if self.mode == "window"
-                else "Kéo để chọn vùng • bấm vào cửa sổ để chụp cửa sổ • Esc để huỷ")
+        text = ("Di chuột: tự nhận khung • Tab/lăn chuột: đổi khung trong/ngoài • bấm để chụp"
+                if self.mode == "window"
+                else "Di chuột: tự nhận khung đỏ • Tab/lăn chuột: đổi khung • Kéo: chọn tay • Esc: huỷ")
         painter.setFont(QFont("Segoe UI", 9))
         metrics = painter.fontMetrics()
         w = metrics.horizontalAdvance(text) + 24
@@ -275,12 +310,14 @@ class RegionOverlay(QWidget):
             self._teardown()
             self.colorPicked.emit(color)
             return
-        if self._sel is not None:
+        if self._sel is not None and self.mode != "window":
             # clicking outside a finished selection restarts it
             self._hide_bar()
             self._sel = None
             self.update()
             return
+        self._press_cand = (QRect(self._hover_window)
+                            if self._hover_window is not None else None)
         self._drag_origin = event.position().toPoint()
         self._dragging = True
         self._sel = QRect(self._drag_origin, self._drag_origin)
@@ -291,17 +328,8 @@ class RegionOverlay(QWidget):
         if self._dragging and self._drag_origin is not None:
             current = event.position().toPoint()
             self._sel = self._selection_from(self._drag_origin, current)
-        elif self.mode == "window":
-            gp = self._global(event.position())
-            rect = win32util.window_at(int(gp.x()), int(gp.y()), {os.getpid()})
-            if rect is not None:
-                local = rect.translated(-self._desktop_rect.topLeft())
-                if local.width() > 0 and local.height() > 0:
-                    self._hover_window = local
-                    self._sel = QRect(local)
-                self.update()
-                return
-            self._hover_window = None
+        elif self.mode == "window" or self._sel is None:
+            self._update_candidates(self._global(event.position()))
         self.update()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
@@ -314,15 +342,18 @@ class RegionOverlay(QWidget):
         moved = (release - self._drag_origin).manhattanLength()
 
         if moved < 6:
-            gp = self._global(event.position())
-            rect = win32util.window_at(int(gp.x()), int(gp.y()), {os.getpid()})
-            if rect is not None:
-                local = rect.translated(-self._desktop_rect.topLeft())
-                self._sel = local
+            if self._press_cand is not None:
+                self._sel = self._press_cand
             else:
-                self._sel = None
-                self.update()
-                return
+                gp = self._global(event.position())
+                rect = win32util.window_at(int(gp.x()), int(gp.y()), {os.getpid()})
+                if rect is not None:
+                    local = rect.translated(-self._desktop_rect.topLeft())
+                    self._sel = local
+                else:
+                    self._sel = None
+                    self.update()
+                    return
         else:
             self._sel = self._selection_from(self._drag_origin, release)
 
@@ -345,7 +376,11 @@ class RegionOverlay(QWidget):
 
     # --------------------------------------------------------------- wheel
     def wheelEvent(self, event: QWheelEvent) -> None:  # noqa: N802
-        # no zooming needed; swallow so the desktop behind never scrolls
+        # wheel switches the detected frame level (content ↔ whole window);
+        # swallowed otherwise so the desktop behind never scrolls
+        if self._cands and not self._dragging and (
+                self.mode == "window" or self._sel is None):
+            self._cycle_candidate(1 if event.angleDelta().y() > 0 else -1)
         event.accept()
 
     # ------------------------------------------------------------- action bar
@@ -376,6 +411,12 @@ class RegionOverlay(QWidget):
     # ------------------------------------------------------------- keyboard
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
         key = event.key()
+        if key in (Qt.Key.Key_Tab, Qt.Key.Key_Backtab):
+            if self._cands and (self.mode == "window" or self._sel is None):
+                back = key == Qt.Key.Key_Backtab or bool(
+                    event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
+                self._cycle_candidate(-1 if back else 1)
+            return
         if key == Qt.Key.Key_Escape:
             if self._sel is not None:
                 self._sel = None

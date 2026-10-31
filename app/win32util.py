@@ -176,6 +176,11 @@ user32.RegisterHotKey.restype = wintypes.BOOL
 user32.UnregisterHotKey.argtypes = [wintypes.HWND, ctypes.c_int]
 user32.PostMessageW.argtypes = [wintypes.HWND, ctypes.c_uint, wintypes.WPARAM, wintypes.LPARAM]
 user32.PostMessageW.restype = wintypes.BOOL
+user32.GetClassNameW.argtypes = [wintypes.HWND, ctypes.c_void_p, ctypes.c_int]
+user32.GetClassNameW.restype = ctypes.c_int
+user32.EnumWindows.restype = wintypes.BOOL
+user32.EnumChildWindows.restype = wintypes.BOOL
+user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 
 
 def window_at(x: int, y: int, exclude_pids: set[int] | None = None) -> QRect | None:
@@ -205,6 +210,153 @@ def window_at(x: int, y: int, exclude_pids: set[int] | None = None) -> QRect | N
         return QRect(rect.left, rect.top, w, h)
     except Exception:
         return None
+
+
+# ------------------------------------------------- window frame detection
+# Child-window classes that hold an app's *content* rather than its chrome:
+# Word's document canvas, Excel's workbook window, Acrobat's page view and
+# the Chromium render surface used by Chrome/Edge/Brave/Electron apps.
+_CONTENT_CLASSES = ("_WwG", "EXCEL7", "AVL_AVView", "Chrome_RenderWidgetHostHWND")
+
+
+def _class_name(hwnd) -> str:
+    buf = ctypes.create_unicode_buffer(256)
+    try:
+        if user32.GetClassNameW(hwnd, buf, 256):
+            return buf.value
+    except Exception:
+        pass
+    return ""
+
+
+def _rect_of(hwnd) -> QRect | None:
+    rect = _RECT()
+    try:
+        if not user32.GetWindowRect(hwnd, ctypes.byref(rect)):
+            return None
+    except Exception:
+        return None
+    w, h = rect.right - rect.left, rect.bottom - rect.top
+    if w <= 0 or h <= 0:
+        return None
+    return QRect(rect.left, rect.top, w, h)
+
+
+def _enum_windows(top_level: bool, parent=None) -> list:
+    """All (hwnd) from EnumWindows / EnumChildWindows, in Z order."""
+    found: list = []
+    proc_type = getattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE)
+    callback_type = proc_type(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    def _cb(hwnd, _lparam):
+        found.append(hwnd)
+        return True
+
+    cb = callback_type(_cb)
+    try:
+        if top_level:
+            user32.EnumWindows(cb, 0)
+        else:
+            user32.EnumChildWindows(parent, cb, 0)
+    except Exception:
+        return []
+    return found
+
+
+def _root_at(x: int, y: int, exclude_pids: set[int]) -> int | None:
+    """Topmost usable top-level window containing the point (Z order)."""
+    for hwnd in _enum_windows(True):
+        try:
+            if not user32.IsWindowVisible(hwnd):
+                continue
+            pid = wintypes.DWORD()
+            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value in exclude_pids:
+                continue
+            if user32.GetWindowLongW(hwnd, -20) & 0x00000080:  # tool window
+                continue
+            rect = _rect_of(hwnd)
+            if rect is not None and rect.contains(x, y):
+                return hwnd
+        except Exception:
+            continue
+    return None
+
+
+def _content_child(root, x: int, y: int) -> QRect | None:
+    """The app's content area inside `root` (Word text frame, PDF view…)."""
+    by_class: dict[str, list] = {}
+    for hwnd in _enum_windows(False, root):
+        cls = _class_name(hwnd)
+        if cls in _CONTENT_CLASSES:
+            try:
+                if user32.IsWindowVisible(hwnd):
+                    by_class.setdefault(cls, []).append(hwnd)
+            except Exception:
+                continue
+    for cls in _CONTENT_CLASSES:
+        options = []
+        for hwnd in by_class.get(cls, []):
+            rect = _rect_of(hwnd)
+            if rect is not None and rect.width() >= 160 and rect.height() >= 120:
+                options.append(rect)
+        if not options:
+            continue
+        containing = [r for r in options if r.contains(x, y)]
+        pool = containing or options
+        return max(pool, key=lambda r: r.width() * r.height())
+    return None
+
+
+def _deepest_at(root, x: int, y: int) -> QRect | None:
+    """Deepest sizable child window of `root` that contains the point."""
+    best: QRect | None = None
+
+    def walk(parent) -> None:
+        nonlocal best
+        for hwnd in _enum_windows(False, parent):
+            try:
+                if not user32.IsWindowVisible(hwnd):
+                    continue
+            except Exception:
+                continue
+            rect = _rect_of(hwnd)
+            if rect is None or not rect.contains(x, y):
+                continue
+            if rect.width() >= 80 and rect.height() >= 60:
+                best = rect
+                walk(hwnd)
+
+    walk(root)
+    return best
+
+
+def window_candidates(x: int, y: int,
+                      exclude_pids: set[int] | None = None) -> list[QRect]:
+    """Capture frames under a screen point, innermost first.
+
+    Order: the app's content area (Word document frame, Acrobat page view,
+    browser content…), then the deepest child window, then the whole
+    top-level window.  Enumeration skips our own windows, so it works while
+    the fullscreen overlay is up.
+    """
+    exclude_pids = exclude_pids or set()
+    try:
+        root = _root_at(int(x), int(y), exclude_pids)
+        if not root:
+            return []
+        root_rect = _rect_of(root)
+        if root_rect is None or root_rect.width() < 40 or root_rect.height() < 30:
+            return []
+        found: list[QRect] = []
+        for rect in (_content_child(root, int(x), int(y)),
+                     _deepest_at(root, int(x), int(y))):
+            if rect is not None and rect != root_rect and rect not in found:
+                found.append(rect)
+        found.append(root_rect)
+        return found
+    except Exception:
+        return []
 
 
 # --------------------------------------------------------------- hotkeys

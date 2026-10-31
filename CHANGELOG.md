@@ -6,6 +6,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow 
 ## [Unreleased]
 
 ### Added
+- **Smart frame detection while capturing**: hovering during region or
+  window capture outlines the frame under the cursor in red — the app's
+  content area first (Word's document canvas without the ribbon/menus,
+  Excel's sheet area, Acrobat's page view, browser/Electron content), then
+  deeper child windows, then the whole window. Tab or the mouse wheel
+  switches between levels, a click captures the outlined frame, and
+  dragging still selects a manual region.
 - **White-canvas growth (Screenpresso-style)**: when an annotation — arrow,
   shape, freehand stroke, text, or a step badge — spills past the picture's
   edge, the picture automatically grows a white margin so the whole
