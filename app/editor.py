@@ -46,6 +46,14 @@ ARROW_STYLES: list[tuple[str, str]] = [
     ("double", "Hai đầu"),
     ("dot", "Đuôi chấm tròn"),
     ("block", "Đậm đặc"),
+    ("fat", "Thân to"),
+]
+
+LINE_STYLES: list[tuple[str, str]] = [
+    ("solid", "Liền"),
+    ("dash", "Nét đứt"),
+    ("dot", "Nét chấm"),
+    ("dashdot", "Đứt–chấm"),
 ]
 
 BADGE_STYLES: list[tuple[str, str]] = [
@@ -79,6 +87,7 @@ class ToolState:
     font_size: int = 24
     next_badge: int = 1
     arrow_style: str = "single"
+    line_style: str = "solid"
     badge_style: str = "number"
     magnify_factor: float = 2.0
 
@@ -236,6 +245,16 @@ class Canvas(QWidget):
         pen.setWidthF(max(1.0, self.state.width))
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        # dash patterns are measured in pen-width units
+        if self.state.line_style == "dash":
+            pen.setDashPattern([3.2, 2.1])
+            pen.setStyle(Qt.PenStyle.CustomDashLine)
+        elif self.state.line_style == "dot":
+            pen.setDashPattern([0.05, 1.8])
+            pen.setStyle(Qt.PenStyle.CustomDashLine)
+        elif self.state.line_style == "dashdot":
+            pen.setDashPattern([3.2, 2.1, 0.05, 2.1])
+            pen.setStyle(Qt.PenStyle.CustomDashLine)
         return pen
 
     def _paint_shape(self, painter: QPainter, tool: str, p1: QPointF, p2: QPointF,
@@ -355,11 +374,17 @@ class Canvas(QWidget):
         ux, uy = dx / length, dy / length
         style = self.state.arrow_style
 
-        if style == "block":
-            # one filled polygon: slim shaft widening into a solid head
-            head = min(max(18.0, self.state.width * 5.0), length * 0.62)
-            shaft_half = max(2.2, self.state.width * 0.85)
-            head_half = shaft_half * 2.1
+        if style in ("block", "fat"):
+            # filled polygon arrows: "block" follows the pen width, "fat" is
+            # the classic chunky ➡ whose proportions follow the arrow length
+            if style == "fat":
+                head = min(max(30.0, length * 0.38), length * 0.7)
+                head_half = max(self.state.width * 2.6, head * 0.5)
+                shaft_half = head_half * 0.44
+            else:
+                head = min(max(18.0, self.state.width * 5.0), length * 0.62)
+                shaft_half = max(2.2, self.state.width * 0.85)
+                head_half = shaft_half * 2.1
             base = QPointF(p2.x() - ux * head, p2.y() - uy * head)
 
             def off(pt: QPointF, dist: float) -> QPointF:
@@ -954,6 +979,14 @@ class EditorWindow(QMainWindow):
         self.arrow_combo.currentIndexChanged.connect(self._set_arrow_style)
         options.addWidget(self.arrow_combo)
         options.addSeparator()
+        options.addWidget(QLabel(" Kiểu nét: "))
+        self.dash_combo = QComboBox()
+        for key, label in LINE_STYLES:
+            self.dash_combo.addItem(label, key)
+        self.dash_combo.setToolTip("Kiểu nét: liền, đứt, chấm… cho đường, mũi tên, khung, bút vẽ")
+        self.dash_combo.currentIndexChanged.connect(self._set_line_style)
+        options.addWidget(self.dash_combo)
+        options.addSeparator()
         options.addWidget(QLabel(" Đánh số: "))
         self.badge_combo = QComboBox()
         for key, label in BADGE_STYLES:
@@ -1012,6 +1045,9 @@ class EditorWindow(QMainWindow):
 
     def _set_arrow_style(self, index: int) -> None:
         self.state.arrow_style = self.arrow_combo.itemData(index)
+
+    def _set_line_style(self, index: int) -> None:
+        self.state.line_style = self.dash_combo.itemData(index)
 
     def _set_badge_style(self, index: int) -> None:
         self.state.badge_style = self.badge_combo.itemData(index)

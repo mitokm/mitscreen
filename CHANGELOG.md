@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/), versions follow 
 ## [Unreleased]
 
 ### Added
+- **Stroke styles and a chunky block arrow**: a “Kiểu nét” options combo —
+  solid, dashed, dotted, dash-dot — applies to lines, arrow shafts,
+  rectangles, ellipses and the freehand pen; and the Arrow styles gain
+  “Thân to”, the classic ➡ block arrow whose shaft/head proportions follow
+  the arrow's length.
 - **Smart frame detection while capturing**: hovering during region or
   window capture outlines the frame under the cursor in red — the app's
   content area first (Word's document canvas without the ribbon/menus,
